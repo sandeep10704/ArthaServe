@@ -4,8 +4,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-
+import java.util.Set;
 @Entity
 @Getter
 @Setter
@@ -17,7 +19,11 @@ public class ProductDescription {
     private Long id;
 
     private String title;
+
+    @Column(name = "top_text") // ✅ Explicitly map DB column
     private String topText;
+
+    @Column(name = "bottom_text") // ✅ Explicitly map DB column
     private String bottomText;
 
     @OneToOne
@@ -25,12 +31,5 @@ public class ProductDescription {
     private Product product;
 
     @OneToMany(mappedBy = "productDescription", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    private List<ProductDescriptionPoint> points;
-
-    public List<ProductDescriptionPoint> getPoints() {
-        return points;
-    }
-
-
-
+    private List<ProductDescriptionPoint> points = new ArrayList<>();
 }

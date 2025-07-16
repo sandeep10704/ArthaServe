@@ -6,11 +6,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.Getter;
 import lombok.Setter;
-
+import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
 @Setter
+@NoArgsConstructor // ✅ Required for JPA (Hibernate)
 public class Color {
 
     @Id
@@ -19,5 +20,8 @@ public class Color {
 
     private String name;
 
-
+    // ✅ Add this constructor manually
+    public Color(String name) {
+        this.name = name;
+    }
 }

@@ -37,4 +37,9 @@ public class BlogControllers {
     public BlogCommentDTO addComment(@PathVariable Long id, @RequestBody BlogCommentDTO commentDTO) {
         return blogService.addComment(id, commentDTO);
     }
+    @PostMapping
+    public BlogDTO addBlog(@RequestBody BlogDTO blogDTO) {
+        return blogService.addBlog(blogDTO);
+    }
+
 }

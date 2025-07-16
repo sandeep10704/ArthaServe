@@ -26,7 +26,8 @@ public class ProductResponseDTO {
         private String sku;
         private Set<String> category;
         private Set<String> tags;
-        private String Brands;
+        private String brand;
+
         private Set<String> images;
     }
 
