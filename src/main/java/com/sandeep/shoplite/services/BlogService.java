@@ -214,6 +214,126 @@ public class BlogService {
 
         return savedDTO;
     }
+    public BlogDTO addBlog(BlogDTO blogDTO) {
+        BlogArticle article = new BlogArticle();
+
+        // Basic fields
+        article.setTitle(blogDTO.getArticleData().getTitle());
+        article.setCategory(blogDTO.getArticleData().getCategory());
+        article.setContent(blogDTO.getArticleData().getContent());
+        article.setHeaderImage(blogDTO.getArticleData().getHeaderImage());
+        article.setUpdatedAt(blogDTO.getArticleData().getUpdatedAt());
+        article.setReadTime(blogDTO.getArticleData().getReadTime());
+
+        // Quote
+        if (blogDTO.getArticleData().getQuote() != null) {
+            article.setQuoteText(blogDTO.getArticleData().getQuote().getText());
+            article.setQuoteAuthor(blogDTO.getArticleData().getQuote().getAuthor());
+        }
+
+        // Categories
+        if (blogDTO.getCategories() != null) {
+            List<BlogCategory> categories = blogDTO.getCategories().stream()
+                    .map(cat -> {
+                        BlogCategory c = new BlogCategory();
+                        c.setCategory(cat);
+                        c.setArticle(article);
+                        return c;
+                    }).collect(Collectors.toList());
+            article.setCategories(categories);
+        }
+
+        // Tags
+        if (blogDTO.getTags() != null) {
+            List<BlogTag> tags = blogDTO.getTags().stream()
+                    .map(tag -> {
+                        BlogTag t = new BlogTag();
+                        t.setTag(tag);
+                        t.setArticle(article);
+                        return t;
+                    }).collect(Collectors.toList());
+            article.setTags(tags);
+        }
+
+        // Social Links
+        if (blogDTO.getSocialLinks() != null) {
+            List<BlogSocialLink> socialLinks = blogDTO.getSocialLinks().stream()
+                    .map(link -> {
+                        BlogSocialLink sl = new BlogSocialLink();
+                        sl.setLink(link);
+                        sl.setArticle(article);
+                        return sl;
+                    }).collect(Collectors.toList());
+            article.setSocialLinks(socialLinks);
+        }
+
+        // Gadgets
+        if (blogDTO.getArticleData().getGadgetsList() != null) {
+            List<BlogGadget> gadgets = blogDTO.getArticleData().getGadgetsList().stream()
+                    .map(g -> {
+                        BlogGadget gadget = new BlogGadget();
+                        gadget.setGadget(g);
+                        gadget.setArticle(article);
+                        return gadget;
+                    }).collect(Collectors.toList());
+            article.setGadgets(gadgets);
+        }
+
+        // Bottom Paragraphs
+        if (blogDTO.getArticleData().getBottomParagraphs() != null) {
+            List<BlogBottomParagraph> bottomParas = blogDTO.getArticleData().getBottomParagraphs().stream()
+                    .map(p -> {
+                        BlogBottomParagraph para = new BlogBottomParagraph();
+                        para.setParagraph(p);
+                        para.setArticle(article);
+                        return para;
+                    }).collect(Collectors.toList());
+            article.setBottomParagraphs(bottomParas);
+        }
+        if (blogDTO.getComments() != null) {
+            List<BlogComment> comments = blogDTO.getComments().stream()
+                    .map(c -> {
+                        BlogComment comment = new BlogComment();
+                        comment.setName(c.getName());
+                        comment.setDate(c.getDate());
+                        comment.setText(c.getText());
+                        comment.setAvatar(c.getAvatar());
+                        comment.setArticle(article);
+                        return comment;
+                    }).collect(Collectors.toList());
+            article.setComments(comments);
+        }
+
+
+        // Responsive Section
+        if (blogDTO.getArticleData().getResponsiveSection() != null) {
+            BlogDTO.ResponsiveSection rsDTO = blogDTO.getArticleData().getResponsiveSection();
+            BlogResponsiveSection rs = new BlogResponsiveSection();
+            rs.setTitle(rsDTO.getTitle());
+            rs.setImage(rsDTO.getImage());
+            rs.setArticle(article);
+
+            if (rsDTO.getParagraphs() != null) {
+                List<BlogResponsiveParagraph> paragraphs = rsDTO.getParagraphs().stream()
+                        .map(p -> {
+                            BlogResponsiveParagraph para = new BlogResponsiveParagraph();
+                            para.setParagraph(p);
+                            para.setResponsiveSection(rs);
+                            return para;
+                        }).collect(Collectors.toList());
+                rs.setParagraphs(paragraphs);
+            }
+
+            article.setResponsiveSections(List.of(rs));
+        }
+
+        // Save article
+        BlogArticle savedArticle = blogArticleRepository.save(article);
+
+        // Convert back to BlogDTO (you can reuse your getBlogById for full populated object)
+        return getBlogById(savedArticle.getId());
+    }
+
 
 
 }

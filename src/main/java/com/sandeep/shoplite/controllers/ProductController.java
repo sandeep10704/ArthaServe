@@ -1,6 +1,7 @@
 package com.sandeep.shoplite.controllers;
 
 import com.sandeep.shoplite.dto.ProductPageResponseDTO;
+import com.sandeep.shoplite.dto.ProductRequestDTO;
 import com.sandeep.shoplite.dto.ProductResponseDTO;
 
 import com.sandeep.shoplite.dto.ProductReviewDTO;
@@ -32,6 +33,10 @@ public class ProductController {
     @PostMapping("/{id}/reviews")
     public ProductReviewDTO addReview(@PathVariable Long id, @RequestBody ProductReviewDTO reviewDTO) {
         return productService.addReview(id, reviewDTO);
+    }
+    @PostMapping
+    public ProductResponseDTO addFullProduct(@RequestBody ProductRequestDTO requestDTO) {
+        return productService.addFullProduct(requestDTO);
     }
 
 }

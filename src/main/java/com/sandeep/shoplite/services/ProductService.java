@@ -1,14 +1,16 @@
 package com.sandeep.shoplite.services;
 
 import com.sandeep.shoplite.dto.ProductPageResponseDTO;
+import com.sandeep.shoplite.dto.ProductRequestDTO;
 import com.sandeep.shoplite.dto.ProductResponseDTO;
 import com.sandeep.shoplite.dto.ProductReviewDTO;
 import com.sandeep.shoplite.entity.*;
-import com.sandeep.shoplite.repository.ProductRepository;
-import com.sandeep.shoplite.repository.ReviewRepository;
+import com.sandeep.shoplite.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -21,6 +23,18 @@ public class ProductService {
     private ProductRepository productRepository;
     @Autowired
     private ReviewRepository ReviewRepository;
+    @Autowired
+    private ReviewRepository reviewRepository;
+    @Autowired
+    private TagRepository tagRepository;
+    @Autowired
+    private CategoryRepository categoryRepository;
+    @Autowired
+    private ColorRepository colorRepository;
+
+    @Autowired private SizeRepository sizeRepository;
+
+
 
     public List<ProductResponseDTO> getAllProducts() {
         List<Product> products = productRepository.findAll();
@@ -46,7 +60,7 @@ public class ProductService {
         details.setDescription(product.getDescription());
         details.setStock(product.getStock());
         details.setSku(product.getSku());
-        details.setBrands(product.getBrand());
+        details.setBrand(product.getBrand());
 
         details.setColors(product.getColors() == null
                 ? null
@@ -88,6 +102,9 @@ public class ProductService {
             descriptionDTO.setTitle(description.getTitle());
             descriptionDTO.setTopText(description.getTopText());
             descriptionDTO.setBottomText(description.getBottomText());
+            System.out.println(">>> topText: " + description.getTopText());
+            System.out.println(">>> bottomText: " + description.getBottomText());
+
 
             if (description.getPoints() == null || description.getPoints().isEmpty()) {
                 System.out.println("⚠️ No description points for product ID: " + product.getId());
@@ -219,6 +236,112 @@ public class ProductService {
 
         return savedDTO;
     }
+    public ProductResponseDTO addFullProduct(ProductRequestDTO request) {
+        ProductResponseDTO.ProductDetails details = request.getProduct();
+        ProductResponseDTO.ProductDescription desc = request.getProductDescription();
+        List<ProductResponseDTO.ProductReview> reviews = request.getReviews();
+
+        // Step 1: Create Product entity
+        Product product = new Product();
+        product.setName(details.getName());
+        product.setPrice(details.getPrice());
+        product.setRating(details.getRating());
+        product.setDescription(details.getDescription());
+        product.setStock(details.getStock());
+        product.setSku(details.getSku());
+        product.setBrand(details.getBrand());
+
+        // Step 2: Set colors
+        if (details.getColors() != null) {
+            Set<Color> colors = details.getColors().stream()
+                    .map(name -> colorRepository.findByName(name)
+                            .orElseGet(() -> colorRepository.save(new Color(name))))
+                    .collect(Collectors.toSet());
+            product.setColors(colors);
+        }
+
+        // Step 3: Set sizes
+        if (details.getSizes() != null) {
+            Set<Size> sizes = details.getSizes().stream()
+                    .map(name -> sizeRepository.findByName(name)
+                            .orElseGet(() -> sizeRepository.save(new Size(name))))
+                    .collect(Collectors.toSet());
+            product.setSizes(sizes);
+        }
+
+        // Step 4: Set categories
+        if (details.getCategory() != null) {
+            Set<Category> categories = details.getCategory().stream()
+                    .map(name -> categoryRepository.findByName(name)
+                            .orElseGet(() -> categoryRepository.save(new Category(name))))
+                    .collect(Collectors.toSet());
+            product.setCategories(categories);
+        }
+
+        // Step 5: Set tags
+        if (details.getTags() != null) {
+            Set<Tag> tags = details.getTags().stream()
+                    .map(name -> tagRepository.findByName(name)
+                            .orElseGet(() -> tagRepository.save(new Tag(name))))
+                    .collect(Collectors.toSet());
+            product.setTags(tags);
+        }
+
+        // Step 6: Set images
+        if (details.getImages() != null) {
+            Set<ProductImage> images = details.getImages().stream()
+                    .map(url -> {
+                        ProductImage image = new ProductImage();
+                        image.setImageUrl(url);
+                        image.setProduct(product); // associate with product
+                        return image;
+                    }).collect(Collectors.toSet());
+            product.setImages(images);
+        }
+
+        // Step 7: Create and set product description
+        if (desc != null) {
+            ProductDescription description = new ProductDescription();
+            description.setTitle(desc.getTitle());
+            description.setTopText(desc.getTopText());
+            description.setBottomText(desc.getBottomText());
+            description.setProduct(product); // associate with product
+
+            if (desc.getPoints() != null) {
+                List<ProductDescriptionPoint> points = desc.getPoints().stream()
+                        .map(p -> {
+                            ProductDescriptionPoint point = new ProductDescriptionPoint();
+                            point.setPoint(p);
+                            point.setProductDescription(description);
+                            return point;
+                        }).collect(Collectors.toList()); // ✅ collect to List
+
+                description.setPoints(points);
+
+            }
+
+            product.setProductDescription(description);
+        }
+
+        // Step 8: Save product (cascades will save related entities)
+        Product savedProduct = productRepository.save(product);
+
+        // Step 9: Add reviews
+        if (reviews != null) {
+            for (ProductResponseDTO.ProductReview reviewDTO : reviews) {
+                Review review = new Review();
+                review.setReviewerName(reviewDTO.getName());
+                review.setReviewDate(LocalDate.parse(reviewDTO.getDate(), DateTimeFormatter.ofPattern("MM/dd/yyyy")));
+                review.setText(reviewDTO.getText());
+                review.setImageUrl(reviewDTO.getImage());
+                review.setProduct(savedProduct);
+                reviewRepository.save(review);
+            }
+        }
+
+        return getProductById(savedProduct.getId());
+    }
+
 
 
 }
