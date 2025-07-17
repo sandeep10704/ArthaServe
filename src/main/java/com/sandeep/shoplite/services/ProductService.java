@@ -1,12 +1,10 @@
 package com.sandeep.shoplite.services;
 
-import com.sandeep.shoplite.dto.ProductPageResponseDTO;
-import com.sandeep.shoplite.dto.ProductRequestDTO;
-import com.sandeep.shoplite.dto.ProductResponseDTO;
-import com.sandeep.shoplite.dto.ProductReviewDTO;
+import com.sandeep.shoplite.dto.*;
 import com.sandeep.shoplite.entity.*;
 import com.sandeep.shoplite.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -341,6 +339,52 @@ public class ProductService {
 
         return getProductById(savedProduct.getId());
     }
+    @Autowired
+    private ProductSellingRepository productSellingRepository;
+
+    public List<ProductResponseDTO> getTop5BestSellingProducts() {
+        List<Long> topIds = productSellingRepository.findTopSellingProductIds(PageRequest.of(0, 5));
+//        List<Long> topIds = productSellingRepository.findTopSellingProductIds(org.springframework.data.domain.PageRequest.of(0, 5));
+        List<Product> products = productRepository.findAllById(topIds);
+//        List<Product> products = productRepository.findAllById(topIds);
+        System.out.println("✅ Top Selling IDs: " + topIds);
+        System.out.println("✅ Products Found: " + products.size());
+
+        System.out.println("✅ Top Selling IDs: " + topIds);
+
+
+        System.out.println("✅ Products Found: " + products.size());
+
+
+        return products.stream()
+                .map(product -> {
+                    ProductResponseDTO dto = new ProductResponseDTO();
+                    dto.setId(product.getId());
+
+                    ProductResponseDTO.ProductDetails details = new ProductResponseDTO.ProductDetails();
+                    details.setName(product.getName());
+                    details.setImages(product.getImages() == null
+                            ? null
+                            : product.getImages().stream().map(ProductImage::getImageUrl).collect(Collectors.toSet()));
+                    dto.setProduct(details);
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+
+    public ProductSellingDTO saveOrUpdateSelling(ProductSellingDTO dto) {
+        ProductSelling selling = new ProductSelling();
+        selling.setProductid(dto.getProductid());
+        selling.setSellingno(dto.getSellingno());
+
+        productSellingRepository.save(selling);
+
+        return dto;
+    }
+
+
 
 
 
