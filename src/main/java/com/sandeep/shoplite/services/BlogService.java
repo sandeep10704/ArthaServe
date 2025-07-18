@@ -9,6 +9,7 @@ import com.sandeep.shoplite.repository.BlogCommentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -29,8 +30,23 @@ public class BlogService {
         blogDTO.setId(article.getId());
         blogDTO.setCategories(article.getCategories().stream()
                 .map(BlogCategory::getCategory).collect(Collectors.toList()));
-        blogDTO.setPreviousArticle(article.getPreviousArticle());
-        blogDTO.setNextArticle(article.getNextArticle());
+
+        // Previous Article
+        Optional<BlogArticle> previous = blogArticleRepository.findFirstByIdLessThanOrderByIdDesc(id);
+        if (previous.isPresent()) {
+            blogDTO.setPreviousArticle(previous.get().getTitle());
+        } else {
+            blogDTO.setPreviousArticle(null); // or empty string
+        }
+
+        // Next Article
+        Optional<BlogArticle> next = blogArticleRepository.findFirstByIdGreaterThanOrderByIdAsc(id);
+        if (next.isPresent()) {
+            blogDTO.setNextArticle(next.get().getTitle());
+        } else {
+            blogDTO.setNextArticle(null); // or empty string
+        }
+
         blogDTO.setSocialLinks(article.getSocialLinks().stream()
                 .map(BlogSocialLink::getLink).collect(Collectors.toList()));
         blogDTO.setTags(article.getTags().stream()
@@ -84,6 +100,7 @@ public class BlogService {
         blogDTO.setArticleData(articleData);
         return blogDTO;
     }
+
 
     public BlogPostsDTO getAllPosts() {
         BlogPostsDTO dto = new BlogPostsDTO();
@@ -171,26 +188,53 @@ public class BlogService {
     public List<Map<String, Object>> getPostsSortedByUpdatedAt() {
         List<BlogArticle> articles = blogArticleRepository.findAll();
 
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
+        DateTimeFormatter isoFormatter = DateTimeFormatter.ISO_DATE_TIME;
+        DateTimeFormatter customFormatter = DateTimeFormatter.ofPattern("MMM d yyyy", Locale.ENGLISH);
 
-        // ✅ Sort articles by updatedAt date descending
-        articles.sort(Comparator.comparing(article -> {
-            String updatedAt = article.getUpdatedAt();
-            if (updatedAt == null || updatedAt.isEmpty()) return LocalDateTime.MIN;
-            return LocalDateTime.parse(updatedAt, formatter);
-        }, Comparator.reverseOrder()));
+        int currentYear = LocalDate.now().getYear();
 
-        // ✅ Map to desired JSON structure
-        return articles.stream().map(article -> {
-            Map<String, Object> post = new HashMap<>();
-            post.put("id", article.getId());
-            post.put("cardHeading", article.getCategory());
-            post.put("textHeading", article.getTitle());
-            post.put("text", article.getContent().length() > 200 ? article.getContent().substring(0, 200) + "..." : article.getContent());
-            post.put("image", article.getHeaderImage());
-            return post;
-        }).collect(Collectors.toList());
+        // ✅ Sort articles by updatedAt descending (latest first)
+        articles.sort((a1, a2) -> {
+            LocalDateTime date1 = parseDate(a1.getUpdatedAt(), isoFormatter, customFormatter, currentYear);
+            LocalDateTime date2 = parseDate(a2.getUpdatedAt(), isoFormatter, customFormatter, currentYear);
+            return date2.compareTo(date1); // descending
+        });
+
+        // ✅ Map to desired JSON structure and limit to 4 latest posts
+        return articles.stream()
+                .limit(4)
+                .map(article -> {
+                    Map<String, Object> post = new HashMap<>();
+                    post.put("id", article.getId());
+                    post.put("cardHeading", article.getCategory());
+                    post.put("textHeading", article.getTitle());
+                    post.put("text", article.getContent().length() > 200 ? article.getContent().substring(0, 200) + "..." : article.getContent());
+                    post.put("image", article.getHeaderImage());
+                    return post;
+                })
+                .collect(Collectors.toList());
     }
+
+    private LocalDateTime parseDate(String updatedAt, DateTimeFormatter isoFormatter, DateTimeFormatter customFormatter, int currentYear) {
+        if (updatedAt == null || updatedAt.isEmpty()) {
+            return LocalDateTime.MIN;
+        }
+        try {
+            return LocalDateTime.parse(updatedAt, isoFormatter);
+        } catch (Exception e) {
+            try {
+                updatedAt = updatedAt.replaceAll("(st|nd|rd|th)", "") + " " + currentYear;
+                LocalDate parsedDate = LocalDate.parse(updatedAt.trim(), customFormatter);
+                return parsedDate.atStartOfDay();
+            } catch (Exception ex) {
+                System.out.println("Failed to parse date: " + updatedAt);
+                return LocalDateTime.MIN;
+            }
+        }
+    }
+
+
+
     public BlogCommentDTO addComment(Long articleId, BlogCommentDTO commentDTO) {
         BlogArticle article = blogArticleRepository.findById(articleId)
                 .orElseThrow(() -> new RuntimeException("Article not found with id: " + articleId));

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -218,14 +219,31 @@ public class ProductService {
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
 
         Review review = new Review();
+
+        // Set reviewer name -> mapping to 'name' in JSON
         review.setReviewerName(reviewDTO.getReviewerName());
-        review.setReviewDate(java.time.LocalDate.parse(reviewDTO.getReviewDate()));
+
+        // Parse date safely
+        if (reviewDTO.getReviewDate() != null && !reviewDTO.getReviewDate().isEmpty()) {
+            review.setReviewDate(LocalDate.parse(reviewDTO.getReviewDate()));
+        } else {
+            // You can throw an error or use LocalDate.now() as default
+            review.setReviewDate(LocalDate.now());
+        }
+
+        // Set text
         review.setText(reviewDTO.getText());
+
+        // Set image URL
         review.setImageUrl(reviewDTO.getImageUrl());
+
+        // Link to product
         review.setProduct(product);
 
-        Review savedReview = ReviewRepository.save(review);
+        // Save review
+        Review savedReview = reviewRepository.save(review);
 
+        // Prepare response DTO with your required structure
         ProductReviewDTO savedDTO = new ProductReviewDTO();
         savedDTO.setReviewerName(savedReview.getReviewerName());
         savedDTO.setReviewDate(savedReview.getReviewDate().toString());
@@ -234,6 +252,7 @@ public class ProductService {
 
         return savedDTO;
     }
+
     public ProductResponseDTO addFullProduct(ProductRequestDTO request) {
         ProductResponseDTO.ProductDetails details = request.getProduct();
         ProductResponseDTO.ProductDescription desc = request.getProductDescription();
@@ -329,7 +348,25 @@ public class ProductService {
             for (ProductResponseDTO.ProductReview reviewDTO : reviews) {
                 Review review = new Review();
                 review.setReviewerName(reviewDTO.getName());
-                review.setReviewDate(LocalDate.parse(reviewDTO.getDate(), DateTimeFormatter.ofPattern("MM/dd/yyyy")));
+                DateTimeFormatter[] formatters = {
+                        DateTimeFormatter.ofPattern("MM/dd/yyyy"),
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                };
+
+                LocalDate parsedDate = null;
+                for (DateTimeFormatter formatter : formatters) {
+                    try {
+                        parsedDate = LocalDate.parse(reviewDTO.getDate(), formatter);
+                        break;
+                    } catch (DateTimeParseException e) {
+                        System.out.println(e);
+                    }
+                }
+                if (parsedDate == null) {
+                    throw new RuntimeException("Invalid date format: " + reviewDTO.getDate());
+                }
+                review.setReviewDate(parsedDate);
+
                 review.setText(reviewDTO.getText());
                 review.setImageUrl(reviewDTO.getImage());
                 review.setProduct(savedProduct);
@@ -342,36 +379,30 @@ public class ProductService {
     @Autowired
     private ProductSellingRepository productSellingRepository;
 
-    public List<ProductResponseDTO> getTop5BestSellingProducts() {
+    public List<BestSellingProductDTO> getTop5BestSellingProducts() {
         List<Long> topIds = productSellingRepository.findTopSellingProductIds(PageRequest.of(0, 5));
-//        List<Long> topIds = productSellingRepository.findTopSellingProductIds(org.springframework.data.domain.PageRequest.of(0, 5));
         List<Product> products = productRepository.findAllById(topIds);
-//        List<Product> products = productRepository.findAllById(topIds);
-        System.out.println("✅ Top Selling IDs: " + topIds);
-        System.out.println("✅ Products Found: " + products.size());
-
-        System.out.println("✅ Top Selling IDs: " + topIds);
-
-
-        System.out.println("✅ Products Found: " + products.size());
-
 
         return products.stream()
                 .map(product -> {
-                    ProductResponseDTO dto = new ProductResponseDTO();
+                    BestSellingProductDTO dto = new BestSellingProductDTO();
                     dto.setId(product.getId());
 
-                    ProductResponseDTO.ProductDetails details = new ProductResponseDTO.ProductDetails();
-                    details.setName(product.getName());
-                    details.setImages(product.getImages() == null
-                            ? null
-                            : product.getImages().stream().map(ProductImage::getImageUrl).collect(Collectors.toSet()));
-                    dto.setProduct(details);
+                    // Get first image or null
+                    String imageUrl = null;
+                    if (product.getImages() != null && !product.getImages().isEmpty()) {
+                        imageUrl = product.getImages().iterator().next().getImageUrl();
+                    }
+                    dto.setImage(imageUrl);
+
+                    dto.setText(product.getName());
+                    dto.setAmount("$" + product.getPrice()); // Assuming price is a number
 
                     return dto;
                 })
                 .collect(Collectors.toList());
     }
+
 
 
     public ProductSellingDTO saveOrUpdateSelling(ProductSellingDTO dto) {

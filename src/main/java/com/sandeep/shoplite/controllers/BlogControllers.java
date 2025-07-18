@@ -13,6 +13,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/blogs")
 @RequiredArgsConstructor
+@CrossOrigin
 public class BlogControllers {
 
     private final BlogService blogService;

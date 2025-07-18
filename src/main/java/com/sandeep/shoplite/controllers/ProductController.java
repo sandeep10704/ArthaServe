@@ -35,10 +35,12 @@ public class ProductController {
     public ProductResponseDTO addFullProduct(@RequestBody ProductRequestDTO requestDTO) {
         return productService.addFullProduct(requestDTO);
     }
-    @GetMapping("/bestselling")
-    public List<ProductResponseDTO> getTop5BestSellingProducts() {
+    @GetMapping("/top-selling")
+    public List<BestSellingProductDTO> getTopSellingProducts() {
         return productService.getTop5BestSellingProducts();
     }
+
+
     @PostMapping("/selling")
     public ProductSellingDTO addOrUpdateSelling(@RequestBody ProductSellingDTO dto) {
         return productService.saveOrUpdateSelling(dto);
